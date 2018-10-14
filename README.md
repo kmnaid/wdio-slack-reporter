@@ -5,10 +5,10 @@ A webdriverIO reporter which sends notifications of test results to [slack](http
 
 ## Installation
 
-Install [`wdio-slack-reporter`](https://www.npmjs.com/package/wdio-slack-reporter) as a devDependency.
+Install [`wdio-slack-reporter`](https://www.npmjs.com/package/wdio-slack-reporter) as a dependency.
 
 ```bash
-npm install --save-dev wdio-slack-reporter
+npm install --save wdio-slack-reporter
 ```
 
 ## Configuration
