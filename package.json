@@ -1,0 +1,29 @@
+{
+  "name": "wdio-slack-reporter",
+  "version": "1.0.0",
+  "description": "This reporter provides slack notifications of webdriverIO test results.",
+  "main": "src/reporter.js",
+  "files": [
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/kmnaid/wdio-slack-reporter.git"
+  },
+  "keywords": [
+    "reporter",
+    "webdriverio",
+    "wdio",
+    "wdio-plugin",
+    "wdio-reporter",
+    "wdio-slack-reporter",
+    "slack",
+    "notification",
+    "chat"
+  ],
+  "author": "Naidele Manjunath",
+  "license": "MIT",
+  "dependencies": {
+    "sync-request": "^6.0.0"
+  }
+}
