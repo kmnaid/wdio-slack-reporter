@@ -53,7 +53,7 @@ const slackReporter = function(baseReporter, config, options) {
             text: options.message,
             fields: [
                 {
-                    title: 'Testcases',
+                    title: 'Test Cases',
                     value: `Passed: ${stats.counts.passes}, Failed: ${stats.counts.failures}\n`,
                     short: true,
                 },
