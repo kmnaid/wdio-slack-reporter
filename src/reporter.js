@@ -33,15 +33,15 @@ const slackReporter = function(baseReporter, config, options) {
             stats.failures.forEach((failure) => {
                 let sauceJobId,
                     sauceJobAuthToken;
-                let browerDetails = failure.err.message;
+                let browserDetails = failure.err.message;
                 if (config.host.indexOf('saucelabs.com') > -1) {
-                    browerDetails += `\nSauce Job: ${failure.runningBrowser.split('Check out job at ').pop()}`;
+                    browserDetails += `\nSauce Job: ${failure.runningBrowser.split('Check out job at ').pop()}`;
                 }
                 attach = {
                     color: '#CD0000',
                     title: failure.fullTitle,
                     footer: failure.err.stack,
-                    text: browerDetails,
+                    text: browserDetails,
                 };
                 attachments.push(attach);
             });
@@ -53,7 +53,7 @@ const slackReporter = function(baseReporter, config, options) {
             text: options.message,
             fields: [
                 {
-                    title: 'Testcases',
+                    title: 'Test Cases',
                     value: `Passed: ${stats.counts.passes}, Failed: ${stats.counts.failures}\n`,
                     short: true,
                 },
