@@ -1,6 +1,6 @@
 {
   "name": "wdio-slack-reporter",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "This reporter provides slack notifications of webdriverIO test results.",
   "main": "src/reporter.js",
   "files": [
