@@ -1,64 +1,82 @@
-const util = require('util'),
-    events = require('events'),
-    syncRequest = require('sync-request')
+'use strict';
+const { IncomingWebhook } = require('@slack/webhook');
+const { execSync } = require('child_process');
+const fs=require('fs');
+const failedColor = '#CD0000';
 
-const slackReporter = function(baseReporter, config, options) {
-
-    if(!options.notify) {
-        console.log('[slack-reporter] Slack notification is not on.');
-        return;
-    }
-    if (!options.webhook) {
-        console.warn('[slack-reporter] Slack Webhook URL is not configured, notifications will not be sent to slack.');
-        return;
-    }
-
-    let attachments = [];
-
-    this.on('end', function() {
-        let stats = baseReporter.stats;
-
-        if (!stats.counts.failures && options.notifyOnlyOnFailure) {
-            //This provides an option to not send slack notifications when all tests pass
-            console.log('[slack-reporter] All test passed, slack notification will not be sent as notifyOnlyOnFailure is set to true.');
+class SlackReporter {
+    async sendNotification(options, resultsSummary) {
+        if (!options.webhook) {
+            console.warn('[slack-reporter] Slack Webhook URL is not configured, notifications will not be sent to slack.');
             return;
         }
 
-        let seconds = parseInt((stats._duration/1000)%60)
-            , minutes = parseInt((stats._duration/(1000*60))%60)
-            , hours = parseInt((stats._duration/(1000*60*60))%24);
+        const { username = 'wdio-slack-reporter'
+            , webhook
+            , jsonResultsDirectory
+            , filePattern
+            , notifyOnlyOnFailure = true } = options;
 
-        let attach = {};
-        if(stats.failures.length) {
-            stats.failures.forEach((failure) => {
-                let sauceJobId,
-                    sauceJobAuthToken;
-                let browserDetails = failure.err.message;
-                if (config.host.indexOf('saucelabs.com') > -1) {
-                    browserDetails += `\nSauce Job: ${failure.runningBrowser.split('Check out job at ').pop()}`;
-                }
-                attach = {
-                    color: '#CD0000',
-                    title: failure.fullTitle,
-                    footer: failure.err.stack,
-                    text: browserDetails,
-                };
-                attachments.push(attach);
-            });
+        if (!resultsSummary.failed && notifyOnlyOnFailure) {
+            console.log('[slack-notifier] All test passed, slack notification will not be sent as notifyOnlyOnFailure is set.');
+            return;
         }
+
+        const slackHook = new IncomingWebhook(webhook)
+            , command =`node mergeResults.js ${jsonResultsDirectory} ${filePattern}`;
+        let results
+            , executionTime = 0
+            , attachments = []
+            , attach = {};
+
+        execSync(command, {stdio: [process.stdin, process.stdout, process.stderr]});
+        try{
+            results=JSON.parse(fs.readFileSync(`${jsonResultsDirectory}/wdio-merged.json`, 'utf8'));
+        } catch(error) {
+            console.log('Error while reading/parsing data from the merged json file', error);
+            //Attach this error to slack notification
+        }
+        const suites = results.suites;
+        suites.forEach(suite => {
+            executionTime += suite.duration;
+            suite.tests.forEach((test) => {
+                if(test.state == 'failed') {
+                    attach = {
+                        color: failedColor,
+                        title: `${suite.name}:${test.name}`,
+                        footer: test.standardError,
+                        //text: selenium host details - TODO
+                    };
+                    attachments.push(attach);
+                }
+            });
+            suite.hooks.forEach(hook => {
+                if(hook.state == 'failed') {
+                //if(hook.error) {
+                    attach = {
+                        color: failedColor,
+                        title: `${suite.name}:${hook.title}`,
+                        footer: hook.standardError,
+                    };
+                    attachments.push(attach);
+                }
+            });
+        });
+        let seconds = parseInt((executionTime/1000)%60)
+            , minutes = parseInt((executionTime/(1000*60))%60)
+            , hours = parseInt((executionTime/(1000*60*60))%24);
+
         attach = {
-            color: '#0000e5',
-            title: 'Test Results',
-            title_link: options.results,
-            text: options.message,
+            'color': '#6B33FF',
+            'title': 'Summary',
             fields: [
                 {
-                    title: 'Test Cases',
-                    value: `Passed: ${stats.counts.passes}, Failed: ${stats.counts.failures}\n`,
+                    'title': 'Testcases',
+                    value: `Passed: ${resultsSummary.passed}, Failed: ${resultsSummary.failed}\n`,
                     short: true,
                 },
                 {
-                    title: 'Duration',
+                    'title': 'Duration',
                     value: `${hours}h : ${minutes}m : ${seconds}s`,
                     short: true
                 }
@@ -66,24 +84,13 @@ const slackReporter = function(baseReporter, config, options) {
         };
         attachments.push(attach);
 
-        let res = syncRequest('POST', options.webhook, {
-            json: {
-                username: options.username,
-                icon_emoji: (stats.counts.failures === 0) ? ':sun:' : ':rain:',
-                attachments: attachments,
-            },
-        });
-    });
-};
+        const payload = {
+            username: username,
+            icon_emoji: (resultsSummary.failed === 0) ? ':sun:' : ':rain:',
+            'attachments': attachments
+        };
 
-slackReporter.reporterName = 'slackReporter';
-
-/**
- * Inherit from EventEmitter
- */
-util.inherits(slackReporter, events.EventEmitter);
-
-/**
- * Expose Custom Reporter
- */
-exports = module.exports = slackReporter;
+        await slackHook.send(payload);
+    }
+}
+module.exports = SlackReporter;
